@@ -1,0 +1,96 @@
+---
+title: "Exercise 1: Estimating Mean and SD"
+author: "Jason Doll"
+date: "June 8, 2018"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Objective
+
+In this execise, you will be introduce the Stan programing language by estimating the mean and standard deviation (SD) of a simulated dataset. You will use concepts describe during the workshop to create your first Stan program
+
+## Background
+
+Data used in this exercise will be randomly generate from a normal distribution with fixed mean and SD. The R code to initialize workspace, generate data, and package and send the data with initial values to Stan are provided in the "Ex1_mean.R" file located in the "Ex1_mean" folder. The instructor will review this R file with you. Your task will be to create the Stan file using the Stan code provided below. You are encouraged to type rather than copy/paste the code into a new .stan document. The model you will fit to individual observations i is:
+
+\[
+\begin{aligned}
+\text{Model:} \hspace{1cm} \text{y}_i &= \mu + \epsilon_i\\
+\hspace{1cm} \epsilon_i &\sim \text{Normal}(0, \sigma)\\
+\text{Priors:} \hspace{1cm} \mu &\sim \text{Normal}(0, 100)\\
+\sigma &\sim \text{half-cauchy}(0, 5)
+\end{aligned}
+\]
+
+### R packages required for this exercise
+1. rstan
+
+## Directions
+
+Create a new text file and save it as "Ex1_est_mean_sd.stan" in the "Ex1_mean" folder. Enter the Stan code below in the new .stan file. 
+
+## Stan code
+
+```{r, engine="stan",output.var="Ex1", eval=F, echo=T}
+data{
+  int<lower=0> n; //number of obserations
+  vector[n] y;    //observations as a vector
+}
+
+parameters {
+  real<lower=0> sigma;  //standard deviation to be estimated
+  real mu;              //Mean to be estimated
+}
+
+model {
+  
+  //reference priors
+  sigma ~ cauchy(0,5);
+  mu ~ normal(0,100);
+  
+  //likelihood, loop through number of observations
+  for(i in 1:n){
+    y[i] ~ normal(mu, sigma);
+  }
+  
+}
+
+```
+
+### R Code
+
+Open "Ex1_mean.R" and run lines 1 through the lines:
+
+```{r, eval=F, echo=T}
+#send everything to Stan
+fit1 <- stan(file = 'Ex1_est_mean_sd.stan',
+             data = dataList , 
+             init = initslst,
+             chains = nchains,
+             iter = 1000 ,
+             warmup = 500 , 
+             thin = 1 )
+```
+
+Traceplots, parameter estimates and plots of results can be viewed using the code below (note this code is provided):
+
+```{r, eval=F, echo=T}
+#View traceplots
+traceplot(fit1)
+#view results
+fit1
+
+#extract results
+est_mean=rstan::extract(fit1,"mu")$mu
+est_sd=rstan::extract(fit1,"sigma")$sigma
+
+#plot results
+par(mfrow=c(1,2))
+hist(est_mean,breaks=50);abline(v=mu,lwd=5);
+hist(est_sd,breaks=50);abline(v=sd,lwd=5);
+par(mfrow=c(1,1))
+```

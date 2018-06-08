@@ -1,0 +1,121 @@
+---
+title: 'Exercise 6: Iris data, Linear Regression'
+author: "Jason Doll"
+date: "June 8, 2018"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Objective
+This exercise will use skills obtained in previous exercises to create the linear regression model.
+
+## Background
+In this example, we will use the Iris data set that is included in base R. You will write a stan program to estimate parameters of a linear regression model to predict sepal width from sepal length. The R code to initialize workspace, read data, and package and send the data with initial values to Stan are provided in the "Ex6_ext_lr.R" file located in the "Ex6_Iris" folder. This is a self driven exercise, review the R code then create the .stan file. The model you will fit to individual observations i is:
+
+\[
+\begin{aligned}
+\text{Model:} \hspace{1cm} \text{y}_i &= \alpha + \beta \text{X}_i + \epsilon_i\\
+\hspace{1cm} \epsilon_i &\sim \text{Normal}(0, \sigma)\\
+\text{Priors:} \hspace{1cm} \alpha &\sim \text{Normal}(0, 100)\\
+\hspace{1cm} \beta &\sim \text{Normal}(0, 100)\\
+\sigma &\sim \text{half-cauchy}(0, 5)
+\end{aligned}
+\]
+
+Where Y = sepal width and X = sepal length
+
+### R packages required for this exercise
+1. rstan
+
+## Directions
+Create a new text file and save it as "Ex6_est_lr.stan" in the "Ex6_Iris" folder. Using the code from previous exercises, create the neccessary stan model. The R code and final figures are below.
+
+## R Code
+
+Load library, clear workspace, and load data
+```{r, results=FALSE}
+#####CSTAT Workshop###############
+#####Exercise 5###################
+#####Analysis of Iris data########
+#####File provided by instructor##
+##################################
+
+#install/load the rstan package
+require(rstan)
+
+#Set working directory to source file locations
+#In Rstudio 
+#This directory must have all data files and Stan model code needed.
+#If you receive an error, manually set the working directory
+#setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+
+#clear workspace
+rm(list=ls())
+
+#Generate simulated data
+#Load Iris data
+
+iris = iris
+
+#specify number of chains, used to initialize values and specify chains
+nchains = 3
+
+# Specify data:
+dataList = list(
+  'n'=nrow(iris),
+  'x'=iris$Sepal.Length,
+  'y'=iris$Sepal.Width
+)
+```
+
+Initialize paramter values and send everything to stan.
+
+```{r, results=FALSE}
+#Initialize values
+#convergence can be improved by setting reasonable starting values
+#i.e, range of observations from 1-20, don't intialize mean at 100000
+#Use different starting values for each chain
+initslst <- lapply(1:nchains,function(i) {
+  list(
+    alpha = rnorm(1,0,1),
+    beta = rnorm(1,0,1),
+    sigma=runif(1,1,10)
+  )
+})
+
+#send everything to Stan
+fit2 <- stan(file = 'Ex6_est_lr.stan',
+             data = dataList , 
+             init = initslst,
+             chains = nchains,
+             iter = 1000 ,
+             warmup = 500 , 
+             thin = 1 )
+```
+
+View traceplots and pararmeter estimates
+```{r}
+#View traceplots
+traceplot(fit2)
+#view results
+fit2
+```
+
+Extract paramters and plot histograms
+```{r}
+#extract results
+est_alpha=rstan::extract(fit2,"alpha")$alpha
+est_beta=rstan::extract(fit2,"beta")$beta
+est_sd=rstan::extract(fit2,"sigma")$sigma
+
+#plot results
+par(mfrow=c(1,3))
+hist(est_alpha,breaks=20);
+hist(est_beta,breaks=20);
+hist(est_sd,breaks=20);
+par(mfrow=c(1,1))
+```
+
